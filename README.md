@@ -2,7 +2,7 @@
 
 TeXTogether is a collaborative LaTeX editor that allows multiple users to work on LaTeX documents in real-time. It features a powerful editor with syntax highlighting, real-time collaboration, integrated comments, and live PDF preview.
 
-![TeXTogether Screenshot](/placeholder.svg?height=400&width=800)
+![TeXTogether Screenshot](/public/Screenshot%20Home.png)
 
 ## Features
 
