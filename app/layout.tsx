@@ -19,10 +19,11 @@ export default function RootLayout({
 				/>
 			</head>
 			<body>
+				<Toaster />
 				<AuthProvider>
 					<ThemeProvider attribute="class" defaultTheme="light" enableSystem>
 						{children}
-						<Toaster />
+						
 					</ThemeProvider>
 				</AuthProvider>
 			</body>

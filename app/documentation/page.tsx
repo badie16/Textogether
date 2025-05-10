@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { DashboardShell } from "@/components/dashboard-shell"
+import { DashboardShell } from "@/components/dashboard-shell";  // Make sure this path is correct
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { withAuth } from "@/lib/auth"
