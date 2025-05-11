@@ -1,9 +1,3 @@
-interface BibTeXEntry {
-  type: string
-  key: string
-  fields: Record<string, string>
-}
-
 export type BibTeXEntry = {
   type: string
   key: string
