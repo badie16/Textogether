@@ -28,6 +28,32 @@ export function useSupabaseDocument(documentId: string): UseSupabaseDocumentResu
   useEffect(() => {
     const loadDocument = async () => {
       try {
+        // Vérifier si le document existe
+        const { data: exists, error: checkError } = await supabase
+          .from("documents")
+          .select("id")
+          .eq("id", documentId)
+          .single()
+
+        if (checkError && checkError.code !== "PGRST116") {
+          throw checkError
+        }
+
+        // Si le document n'existe pas, créer un document vide
+        if (!exists) {
+          const { error: createError } = await supabase.from("documents").insert({
+            id: documentId,
+            title: "Nouveau document",
+            content:
+              "% Bienvenue dans votre nouveau document LaTeX\n\\documentclass{article}\n\\begin{document}\n\\title{Nouveau document}\n\\author{Votre nom}\n\\maketitle\n\nVotre contenu ici.\n\n\\end{document}",
+            owner_id: (await supabase.auth.getUser()).data.user?.id,
+          })
+
+          if (createError) {
+            throw createError
+          }
+        }
+
         const { data, error } = await supabase
           .from("documents")
           .select(`

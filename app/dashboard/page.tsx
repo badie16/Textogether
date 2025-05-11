@@ -11,6 +11,7 @@ import { DashboardShell } from "@/components/dashboard-shell"
 import { ProjectCard } from "@/components/project-card"
 import { useToast } from "@/components/ui/use-toast"
 import { withAuth } from "@/lib/auth"
+import { useAuth } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
 import { CreateFolderDialog } from "@/components/create-folder-dialog"
 import { CreateTagDialog } from "@/components/create-tag-dialog"
@@ -35,69 +36,123 @@ function DashboardPage() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const { toast } = useToast()
+  const { user } = useAuth() // Utiliser le hook useAuth pour accéder à l'utilisateur authentifié
 
   useEffect(() => {
-    fetchProjects()
-  }, [selectedFolder, selectedTags])
+    if (user) {
+      fetchProjects()
+    }
+  }, [user, selectedFolder, selectedTags])
 
   const fetchProjects = async () => {
+    if (!user) {
+      console.error("User not authenticated")
+      return
+    }
+
     setIsLoading(true)
     try {
-      let query = supabase
+      // Utiliser directement l'ID de l'utilisateur depuis le hook useAuth
+      const userId = user.id
+
+      // Requête simplifiée pour éviter la récursion
+      // 1. Récupérer les documents dont l'utilisateur est propriétaire
+      const { data: ownedDocs, error: ownedError } = await supabase
         .from("documents")
-        .select(`
-          id,
-          title,
-          updated_at,
-          document_permissions (user_id)
-        `)
+        .select("id, title, updated_at")
+        .eq("owner_id", userId)
         .order("updated_at", { ascending: false })
 
-      // Apply folder filter if selected
-      if (selectedFolder) {
-        query = query.filter("folder_id", "eq", selectedFolder)
+      if (ownedError) throw ownedError
+
+      // 2. Récupérer les documents partagés avec l'utilisateur
+      const { data: sharedDocs, error: sharedError } = await supabase
+        .from("document_permissions")
+        .select("document_id")
+        .eq("user_id", userId)
+
+      if (sharedError) throw sharedError
+
+      // 3. Si l'utilisateur a des documents partagés, les récupérer
+      let sharedDocuments = []
+      if (sharedDocs && sharedDocs.length > 0) {
+        const sharedIds = sharedDocs.map((doc) => doc.document_id)
+        const { data: sharedDocData, error: sharedDocError } = await supabase
+          .from("documents")
+          .select("id, title, updated_at")
+          .in("id", sharedIds)
+          .order("updated_at", { ascending: false })
+
+        if (sharedDocError) throw sharedDocError
+        sharedDocuments = sharedDocData || []
       }
 
-      const { data, error } = await query
+      // Combiner les documents possédés et partagés
+      let allDocuments = [...(ownedDocs || []), ...sharedDocuments]
 
-      if (error) {
-        throw error
+      // Appliquer le filtre de dossier si sélectionné
+      if (selectedFolder && allDocuments.length > 0) {
+        const { data: folderDocs } = await supabase
+          .from("document_folder_relations")
+          .select("document_id")
+          .eq("folder_id", selectedFolder)
+
+        if (folderDocs && folderDocs.length > 0) {
+          const folderDocIds = new Set(folderDocs.map((doc) => doc.document_id))
+          allDocuments = allDocuments.filter((doc) => folderDocIds.has(doc.id))
+        } else {
+          // Aucun document dans ce dossier
+          setProjects([])
+          setIsLoading(false)
+          return
+        }
       }
 
-      // Transform data and count collaborators
-      const transformedProjects = data.map((doc) => ({
-        id: doc.id,
-        title: doc.title,
-        updated_at: doc.updated_at,
-        collaborators: doc.document_permissions ? doc.document_permissions.length : 0,
-      }))
-
-      // Apply tag filtering if needed
-      let filteredProjects = transformedProjects
-      if (selectedTags.length > 0) {
+      // Appliquer le filtre de tags si sélectionné
+      if (selectedTags.length > 0 && allDocuments.length > 0) {
         const { data: tagRelations } = await supabase
           .from("document_tag_relations")
           .select("document_id, tag_id")
           .in("tag_id", selectedTags)
 
-        if (tagRelations) {
-          const documentIds = new Set()
+        if (tagRelations && tagRelations.length > 0) {
+          const taggedDocIds = new Set()
           tagRelations.forEach((relation) => {
-            documentIds.add(relation.document_id)
+            taggedDocIds.add(relation.document_id)
           })
 
-          filteredProjects = transformedProjects.filter((project) => documentIds.has(project.id))
+          allDocuments = allDocuments.filter((doc) => taggedDocIds.has(doc.id))
+        } else {
+          // Aucun document avec ces tags
+          setProjects([])
+          setIsLoading(false)
+          return
         }
       }
 
-      // Apply search filter if needed
+      // Appliquer le filtre de recherche
       if (searchQuery) {
-        filteredProjects = filteredProjects.filter((project) =>
-          project.title.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
+        allDocuments = allDocuments.filter((doc) => doc.title.toLowerCase().includes(searchQuery.toLowerCase()))
       }
 
-      setProjects(filteredProjects)
+      // Obtenir le nombre de collaborateurs pour chaque document
+      const transformedProjects = await Promise.all(
+        allDocuments.map(async (doc) => {
+          const { data: permissions } = await supabase
+            .from("document_permissions")
+            .select("user_id")
+            .eq("document_id", doc.id)
+
+          return {
+            id: doc.id,
+            title: doc.title,
+            updated_at: doc.updated_at,
+            collaborators: permissions ? permissions.length : 0,
+          }
+        }),
+      )
+
+      setProjects(transformedProjects)
     } catch (error) {
       console.error("Error fetching projects:", error)
       toast({
@@ -115,20 +170,23 @@ function DashboardPage() {
   }
 
   const handleCreateProject = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a project.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
-      const { data: user } = await supabase.auth.getUser()
-
-      if (!user) {
-        throw new Error("User not authenticated")
-      }
-
       const { data, error } = await supabase
         .from("documents")
         .insert({
           title: "Untitled Document",
           content:
             "\\documentclass{article}\n\\title{Untitled Document}\n\\author{}\n\\date{\\today}\n\n\\begin{document}\n\n\\maketitle\n\n\\section{Introduction}\n\n\\end{document}",
-          owner_id: user.user.id,
+          owner_id: user.id,
         })
         .select()
 

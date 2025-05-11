@@ -29,3 +29,7 @@ next-env.d.ts
 
 # textogether schema
 textogether.sql
+fix-all-rls-policies.sql
+fix-documents-rls-policies.sql
+
+packag.*

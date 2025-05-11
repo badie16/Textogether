@@ -2,45 +2,59 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
 
 export default function RegisterPage() {
-  const [name, setName] = useState("")
+  const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { signUp } = useAuth()
+  const { signUp, user } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
+
+  // Rediriger l'utilisateur vers le tableau de bord s'il est déjà connecté
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    try {
-      const { error } = await signUp(email, password, name)
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords do not match",
+        description: "Please make sure your passwords match.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
 
+    try {
+      const { error } = await signUp(email, password, fullName)
       if (error) {
         toast({
-          title: "Error creating account",
+          title: "Error signing up",
           description: error.message,
           variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Account created",
-          description: "Your account has been created successfully. Please check your email for verification.",
         })
       }
     } catch (error) {
       toast({
-        title: "Error creating account",
+        title: "Error signing up",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
@@ -57,15 +71,20 @@ export default function RegisterPage() {
             <span className="text-2xl font-bold">TeXTogether</span>
           </div>
           <CardTitle className="text-center text-2xl">Create an account</CardTitle>
-          <CardDescription className="text-center">
-            Enter your information to get started with TeXTogether
-          </CardDescription>
+          <CardDescription className="text-center">Enter your information to create an account</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -86,9 +105,17 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
               />
-              <p className="text-xs text-muted-foreground">Password must be at least 8 characters long</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

@@ -36,13 +36,36 @@ function EditorPage({ params }: { params: { id: string } }) {
 
     setIsCompiling(true)
     try {
-      const result = await compileLaTeX(content)
+      // Vérifier si le contenu est vide ou trop court
+      if (!content || content.length < 10) {
+        toast({
+          title: "Contenu insuffisant",
+          description: "Veuillez ajouter du contenu LaTeX avant de compiler",
+          variant: "destructive",
+        })
+        setIsCompiling(false)
+        return
+      }
+
+      // Ajouter un préambule minimal si nécessaire
+      let contentToCompile = content
+      if (!content.includes("\\documentclass")) {
+        contentToCompile = `\\documentclass{article}\n\\begin{document}\n${content}\n\\end{document}`
+      }
+
+      const result = await compileLaTeX(contentToCompile)
       setCompilationResult(result)
+
+      // Notification de succès
+      toast({
+        title: "Compilation réussie",
+        description: "Le PDF a été généré avec succès",
+      })
     } catch (error) {
       console.error("Compilation error:", error)
       toast({
-        title: "Compilation Error",
-        description: error instanceof Error ? error.message : "Unknown error during compilation",
+        title: "Erreur de compilation",
+        description: error instanceof Error ? error.message : "Erreur inconnue pendant la compilation",
         variant: "destructive",
       })
     } finally {

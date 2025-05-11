@@ -43,6 +43,19 @@ export function BibliographyManager({ documentId, onInsertCitation }: Bibliograp
   const loadBibliography = async () => {
     setIsLoading(true)
     try {
+      // Vérifier si la table existe
+      const { data: tableExists } = await supabase
+        .from("document_bibliographies")
+        .select("id", { count: "exact", head: true })
+        .limit(1)
+
+      // Si la table n'existe pas encore, créer une bibliographie vide
+      if (!tableExists) {
+        setBibtexContent("")
+        setEntries([])
+        return
+      }
+
       const { data, error } = await supabase
         .from("document_bibliographies")
         .select("content")

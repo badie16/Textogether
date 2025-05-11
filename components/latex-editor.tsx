@@ -66,6 +66,24 @@ export function LaTeXEditor({ content, documentId, onChange, onSave }: LaTeXEdit
       onSave()
     })
 
+    // Améliorer la réactivité de l'éditeur
+    editor.updateOptions({
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      minimap: { enabled: false },
+      wordWrap: "on",
+      lineNumbers: "on",
+      renderWhitespace: "boundary",
+      quickSuggestions: { other: true, comments: false, strings: false },
+      acceptSuggestionOnEnter: "on",
+    })
+
+    // Ajouter un gestionnaire d'événements pour les modifications
+    editor.onDidChangeModelContent(() => {
+      const newContent = editor.getValue()
+      onChange(newContent)
+    })
+
     // Track cursor position
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition(e.position)

@@ -3,50 +3,47 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { toast } = useToast()
 
-  // Get the hash from the URL
   useEffect(() => {
-    // The hash contains the access token and refresh token
+    // Check if we have a hash fragment in the URL
     const hash = window.location.hash
-    if (hash && hash.includes("access_token")) {
-      // Set the access token in the Supabase client
-      const accessToken = hash.split("&")[0].split("=")[1]
-      if (accessToken) {
-        supabase.auth.setSession({ access_token: accessToken, refresh_token: "" })
-      }
+    if (!hash || !hash.startsWith("#access_token=")) {
+      toast({
+        title: "Invalid reset link",
+        description: "The password reset link is invalid or has expired.",
+        variant: "destructive",
+      })
     }
-  }, [])
+  }, [toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
 
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
+        title: "Passwords do not match",
         description: "Please make sure your passwords match.",
         variant: "destructive",
       })
+      setIsLoading(false)
       return
     }
-
-    setIsLoading(true)
 
     try {
       const { error } = await supabase.auth.updateUser({ password })
@@ -58,7 +55,12 @@ export default function ResetPasswordPage() {
           variant: "destructive",
         })
       } else {
-        setIsSubmitted(true)
+        setIsSuccess(true)
+        toast({
+          title: "Password reset successful",
+          description: "Your password has been reset successfully.",
+        })
+        // Redirect to login after 3 seconds
         setTimeout(() => {
           router.push("/login")
         }, 3000)
@@ -81,16 +83,10 @@ export default function ResetPasswordPage() {
           <div className="flex justify-center">
             <span className="text-2xl font-bold">TeXTogether</span>
           </div>
-          <CardTitle className="text-center text-2xl">Set new password</CardTitle>
+          <CardTitle className="text-center text-2xl">Reset your password</CardTitle>
           <CardDescription className="text-center">Enter your new password below</CardDescription>
         </CardHeader>
-        {isSubmitted ? (
-          <CardContent className="space-y-4">
-            <div className="rounded-md bg-green-50 p-4 text-green-700">
-              <p>Password reset successfully! Redirecting to login...</p>
-            </div>
-          </CardContent>
-        ) : (
+        {!isSuccess ? (
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -101,32 +97,46 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={8}
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
+            <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Resetting..." : "Reset Password"}
+                {isLoading ? "Resetting password..." : "Reset password"}
               </Button>
-              <div className="text-center text-sm">
-                <Link href="/login" className="text-primary hover:underline">
-                  Back to login
-                </Link>
-              </div>
             </CardFooter>
           </form>
+        ) : (
+          <CardContent className="space-y-4">
+            <div className="rounded-md bg-green-50 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">
+                    Your password has been reset successfully. Redirecting to login...
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
         )}
       </Card>
     </div>

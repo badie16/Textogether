@@ -1,36 +1,34 @@
-import type React from "react";
-import { AuthProvider } from "@/lib/auth";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
-import "./globals.css";
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/lib/auth"
+import { Toaster } from "@/components/ui/toaster"
 
-export default function RootLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
-	return (
-		<html lang="en" suppressHydrationWarning>
-			<head>
-				<title>TeXTogether - Collaborative LaTeX Editor</title>
-				<meta
-					name="description"
-					content="Real-time collaborative LaTeX editor with PDF preview"
-				/>
-			</head>
-			<body>
-				<Toaster />
-				<AuthProvider>
-					<ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-						{children}
-						
-					</ThemeProvider>
-				</AuthProvider>
-			</body>
-		</html>
-	);
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "TeXTogether - Collaborative LaTeX Editor",
+  description: "A collaborative LaTeX editor for academic writing and research",
+    generator: 'v0.dev'
 }
 
-export const metadata = {
-	generator: "badie /tex-together",
-};
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}

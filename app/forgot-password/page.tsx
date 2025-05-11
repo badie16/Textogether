@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
 
 export default function ForgotPasswordPage() {
@@ -24,19 +24,22 @@ export default function ForgotPasswordPage() {
 
     try {
       const { error } = await resetPassword(email)
-
       if (error) {
         toast({
-          title: "Error",
+          title: "Error resetting password",
           description: error.message,
           variant: "destructive",
         })
       } else {
         setIsSubmitted(true)
+        toast({
+          title: "Password reset email sent",
+          description: "Check your email for a link to reset your password.",
+        })
       }
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Error resetting password",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
@@ -57,18 +60,7 @@ export default function ForgotPasswordPage() {
             Enter your email address and we'll send you a link to reset your password
           </CardDescription>
         </CardHeader>
-        {isSubmitted ? (
-          <CardContent className="space-y-4">
-            <div className="rounded-md bg-green-50 p-4 text-green-700">
-              <p>Password reset link sent! Please check your email.</p>
-            </div>
-            <div className="text-center">
-              <Link href="/login" className="text-primary hover:underline">
-                Back to login
-              </Link>
-            </div>
-          </CardContent>
-        ) : (
+        {!isSubmitted ? (
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -85,7 +77,7 @@ export default function ForgotPasswordPage() {
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send reset link"}
+                {isLoading ? "Sending reset link..." : "Send reset link"}
               </Button>
               <div className="text-center text-sm">
                 Remember your password?{" "}
@@ -95,6 +87,32 @@ export default function ForgotPasswordPage() {
               </div>
             </CardFooter>
           </form>
+        ) : (
+          <CardContent className="space-y-4">
+            <div className="rounded-md bg-green-50 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">
+                    We've sent you an email with a link to reset your password.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="text-center">
+              <Link href="/login" className="text-primary hover:underline">
+                Back to sign in
+              </Link>
+            </div>
+          </CardContent>
         )}
       </Card>
     </div>

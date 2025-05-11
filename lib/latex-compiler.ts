@@ -51,8 +51,14 @@ export async function compileLaTeX(content: string): Promise<CompilationResult> 
 
   // Run pdflatex to compile the document
   try {
+    // Ajouter un timeout pour éviter les blocages
+    const compilePromise = Promise.race([
+      engine.compileLaTeX(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Compilation timeout")), 30000)),
+    ])
+
     engine.setEngineMainFile("pdflatex", "/input.tex")
-    await engine.compileLaTeX()
+    await compilePromise
 
     // Get compilation log
     const log = engine.FS.readFile("/input.log", { encoding: "utf8" })
